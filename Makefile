@@ -1,8 +1,8 @@
-INVENTORY ?= inventories/local.ini
+INVENTORY ?= inventories/inventory.ini
 PLAYBOOK ?= playbooks/start.yml
 ANSIBLE ?= ansible-playbook
 
-deploy: deps
+deploy: 
 	$(ANSIBLE) -i $(INVENTORY) $(PLAYBOOK)
 
 .PHONY: deploy

@@ -1,4 +1,3 @@
----
 - name: Create Cloud-1 directory tree
   ansible.builtin.file:
     path: "{{ item }}"
@@ -47,14 +46,18 @@
     cloud1_mysql_wordpress_password: "{{ cloud1_mysql_wordpress_password_raw.content | b64decode | trim }}"
   no_log: true
 
+- name: Detect whether public host is an IPv4 address
+  ansible.builtin.set_fact:
+    cloud1_public_host_is_ip: "{{ cloud1_public_host is match('^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$') }}"
+
 - name: Generate self-signed TLS certificate when missing
   ansible.builtin.command: >-
     openssl req -x509 -nodes -newkey rsa:4096
     -days {{ cloud1_tls_days }}
     -keyout {{ cloud1_project_dir }}/certs/cloud1.key
     -out {{ cloud1_project_dir }}/certs/cloud1.crt
-    -subj "/C={{ cloud1_tls_country }}/ST={{ cloud1_tls_state }}/L={{ cloud1_tls_locality }}/O={{ cloud1_tls_org }}/CN={{ cloud1_domain }}"
-    -addext "subjectAltName=DNS:{{ cloud1_domain }},DNS:{{ cloud1_pma_domain }}"
+    -subj "/C={{ cloud1_tls_country }}/ST={{ cloud1_tls_state }}/L={{ cloud1_tls_locality }}/O={{ cloud1_tls_org }}/CN={{ cloud1_public_host }}"
+    -addext "subjectAltName={{ 'IP:' if cloud1_public_host_is_ip else 'DNS:' }}{{ cloud1_public_host }}"
   args:
     creates: "{{ cloud1_project_dir }}/certs/cloud1.crt"
 
@@ -112,5 +115,5 @@
   ansible.builtin.debug:
     msg:
       - "WordPress: https://{{ cloud1_domain }}"
-      - "phpMyAdmin: https://{{ cloud1_pma_domain }}"
+      - "phpMyAdmin: https://{{ cloud1_domain }}{{ cloud1_pma_path }}"
       - "TLS is self-signed, so your browser will warn until you install a real certificate."

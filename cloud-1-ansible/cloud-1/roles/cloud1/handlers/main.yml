@@ -1,6 +1,0 @@
----
-- name: Restart Cloud-1 stack
-  ansible.builtin.command:
-    cmd: docker compose -p {{ cloud1_compose_project_name }} -f {{ cloud1_project_dir }}/docker-compose.yml up -d --remove-orphans --force-recreate
-    chdir: "{{ cloud1_project_dir }}"
-  changed_when: true

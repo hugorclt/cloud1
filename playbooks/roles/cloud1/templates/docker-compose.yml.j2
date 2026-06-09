@@ -32,6 +32,10 @@ services:
       WORDPRESS_DB_USER: "{{ cloud1_db_user }}"
       WORDPRESS_DB_PASSWORD: "{{ cloud1_mysql_wordpress_password }}"
       WORDPRESS_TABLE_PREFIX: "{{ cloud1_wp_table_prefix }}"
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', 'https://{{ cloud1_public_host }}');
+        define('WP_SITEURL', 'https://{{ cloud1_public_host }}');
+        $$_SERVER['HTTPS'] = 'on';
     volumes:
       - wordpress_data:/var/www/html
     networks:
@@ -49,6 +53,7 @@ services:
       PMA_PORT: 3306
       PMA_USER: "{{ cloud1_db_user }}"
       PMA_PASSWORD: "{{ cloud1_mysql_wordpress_password }}"
+      PMA_ABSOLUTE_URI: "https://{{ cloud1_public_host }}{{ cloud1_pma_path }}/"
       UPLOAD_LIMIT: 128M
     networks:
       - backend

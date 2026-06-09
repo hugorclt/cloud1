@@ -1,9 +1,0 @@
-# Copy this file to inventories/production.ini and edit it when your AWS/Scaleway/VPS is ready.
-# AWS Ubuntu AMIs usually use ansible_user=ubuntu.
-# Scaleway/42 subject examples may use ansible_user=root.
-
-[cloud1]
-prod-1 ansible_host=YOUR_PUBLIC_IPV4 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/YOUR_KEY.pem
-
-[cloud1:vars]
-ansible_python_interpreter=/usr/bin/python3

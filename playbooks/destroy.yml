@@ -1,0 +1,38 @@
+- name: Stop Cloud-1 stack
+  hosts: cloud1
+  become: true
+  gather_facts: false
+
+  vars:
+    cloud1_delete_data: false
+    cloud1_project_dir: /opt/cloud-1
+    cloud1_compose_project_name: cloud1
+
+  tasks:
+    - name: Check if Docker Compose file exists
+      ansible.builtin.stat:
+        path: "{{ cloud1_project_dir }}/docker-compose.yml"
+      register: cloud1_compose_file
+
+    - name: Stop Docker Compose stack if present
+      ansible.builtin.command:
+        cmd: docker compose -p {{ cloud1_compose_project_name }} -f {{ cloud1_project_dir }}/docker-compose.yml down --remove-orphans
+        chdir: "{{ cloud1_project_dir }}"
+      register: cloud1_down
+      when: cloud1_compose_file.stat.exists
+
+    - name: Delete Docker volumes when explicitly requested
+      ansible.builtin.command:
+        cmd: docker compose -p {{ cloud1_compose_project_name }} -f {{ cloud1_project_dir }}/docker-compose.yml down -v --remove-orphans
+        chdir: "{{ cloud1_project_dir }}"
+      register: cloud1_down_volumes
+      changed_when: true
+      when:
+        - cloud1_delete_data | bool
+        - cloud1_compose_file.stat.exists
+
+    - name: Delete project data when explicitly requested
+      ansible.builtin.file:
+        path: "{{ cloud1_project_dir }}"
+        state: absent
+      when: cloud1_delete_data | bool

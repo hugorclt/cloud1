@@ -1,4 +1,0 @@
----
-# No external Ansible collections are required by the playbook.
-# This file is kept so `make deps` is stable if you add collections later.
-collections: []

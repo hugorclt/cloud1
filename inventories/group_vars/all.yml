@@ -6,8 +6,9 @@ cloud1_tls_country: "FR"
 cloud1_tls_state: "Ile-de-France"
 cloud1_tls_locality: "Paris"
 cloud1_tls_org: "42 Cloud-1"
-cloud1_domain: "cloud1.localhost"
-cloud1_pma_domain: "pma.cloud1.localhost"
+cloud1_public_host: "54.37.228.55"
+cloud1_domain: "{{ cloud1_public_host }}"
+cloud1_pma_path: "/phpmyadmin"
 
 cloud1_compose_project_name: "cloud1"
 
