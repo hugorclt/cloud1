@@ -1,0 +1,12 @@
+- name: Deploy web application
+  hosts: cloud1
+  become: true # Run task with elevated privileges
+  gather_facts: true # Collect system information
+  tasks:
+    - name: Verify host is reachable
+      ansible.builtin.ping:
+  roles:
+    - common
+    - docker
+    - firewall
+    - cloud1

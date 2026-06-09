@@ -1,0 +1,22 @@
+---
+- name: Stop Cloud-1 stack
+  hosts: cloud1
+  become: true
+  gather_facts: false
+
+  vars:
+    cloud1_delete_data: false
+
+  tasks:
+    - name: Stop Docker Compose stack if present
+      ansible.builtin.command:
+        cmd: docker compose -f {{ cloud1_project_dir | default('/opt/cloud-1') }}/docker-compose.yml down
+      register: cloud1_down
+      changed_when: "'Removed' in cloud1_down.stdout or 'Removing' in cloud1_down.stdout or 'Stopping' in cloud1_down.stdout"
+      failed_when: false
+
+    - name: Delete project data when explicitly requested
+      ansible.builtin.file:
+        path: "{{ cloud1_project_dir | default('/opt/cloud-1') }}"
+        state: absent
+      when: cloud1_delete_data | bool

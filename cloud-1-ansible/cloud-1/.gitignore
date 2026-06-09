@@ -1,0 +1,16 @@
+# Vagrant / local VM
+.vagrant/
+.vagrant-ssh-config
+
+# Secrets / local overrides
+*.retry
+.env
+*.pem
+*.key
+*.crt
+vault.yml
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

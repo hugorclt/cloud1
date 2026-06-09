@@ -1,0 +1,115 @@
+- name: Create Cloud-1 directory tree
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ cloud1_project_dir }}"
+    - "{{ cloud1_project_dir }}/config"
+    - "{{ cloud1_project_dir }}/config/nginx"
+    - "{{ cloud1_project_dir }}/certs"
+    - "{{ cloud1_project_dir }}/secrets"
+
+- name: Create persistent random MySQL root password
+  ansible.builtin.copy:
+    dest: "{{ cloud1_project_dir }}/secrets/mysql_root_password"
+    content: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+
+- name: Create persistent random WordPress DB password
+  ansible.builtin.copy:
+    dest: "{{ cloud1_project_dir }}/secrets/mysql_wordpress_password"
+    content: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+
+- name: Read MySQL root password
+  ansible.builtin.slurp:
+    src: "{{ cloud1_project_dir }}/secrets/mysql_root_password"
+  register: cloud1_mysql_root_password_raw
+
+- name: Read WordPress DB password
+  ansible.builtin.slurp:
+    src: "{{ cloud1_project_dir }}/secrets/mysql_wordpress_password"
+  register: cloud1_mysql_wordpress_password_raw
+
+- name: Store decoded secrets for templates
+  ansible.builtin.set_fact:
+    cloud1_mysql_root_password: "{{ cloud1_mysql_root_password_raw.content | b64decode | trim }}"
+    cloud1_mysql_wordpress_password: "{{ cloud1_mysql_wordpress_password_raw.content | b64decode | trim }}"
+  no_log: true
+
+- name: Generate self-signed TLS certificate when missing
+  ansible.builtin.command: >-
+    openssl req -x509 -nodes -newkey rsa:4096
+    -days {{ cloud1_tls_days }}
+    -keyout {{ cloud1_project_dir }}/certs/cloud1.key
+    -out {{ cloud1_project_dir }}/certs/cloud1.crt
+    -subj "/C={{ cloud1_tls_country }}/ST={{ cloud1_tls_state }}/L={{ cloud1_tls_locality }}/O={{ cloud1_tls_org }}/CN={{ cloud1_domain }}"
+    -addext "subjectAltName=DNS:{{ cloud1_domain }},DNS:{{ cloud1_pma_domain }}"
+  args:
+    creates: "{{ cloud1_project_dir }}/certs/cloud1.crt"
+
+- name: Secure TLS private key
+  ansible.builtin.file:
+    path: "{{ cloud1_project_dir }}/certs/cloud1.key"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Render Nginx reverse-proxy configuration
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ cloud1_project_dir }}/config/nginx/cloud1.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart Cloud-1 stack
+
+- name: Render Docker Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ cloud1_project_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart Cloud-1 stack
+
+- name: Pull container images
+  ansible.builtin.command:
+    cmd: docker compose -p {{ cloud1_compose_project_name }} -f {{ cloud1_project_dir }}/docker-compose.yml pull
+    chdir: "{{ cloud1_project_dir }}"
+  register: cloud1_pull
+  changed_when: "'Downloaded newer image' in cloud1_pull.stdout or 'Pull complete' in cloud1_pull.stdout"
+
+- name: Start Cloud-1 stack
+  ansible.builtin.command:
+    cmd: docker compose -p {{ cloud1_compose_project_name }} -f {{ cloud1_project_dir }}/docker-compose.yml up -d --remove-orphans
+    chdir: "{{ cloud1_project_dir }}"
+  register: cloud1_up
+  changed_when: >-
+    'Creating' in cloud1_up.stdout or
+    'Recreating' in cloud1_up.stdout or
+    'Starting' in cloud1_up.stdout or
+    'Started' in cloud1_up.stdout
+
+- name: Wait for HTTPS to answer
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 443
+    timeout: 120
+
+- name: Show access URLs
+  ansible.builtin.debug:
+    msg:
+      - "WordPress: https://{{ cloud1_domain }}"
+      - "phpMyAdmin: https://{{ cloud1_pma_domain }}"
+      - "TLS is self-signed, so your browser will warn until you install a real certificate."
